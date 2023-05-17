@@ -1,0 +1,273 @@
+<!doctype html>
+<!-- HTML template - includes Vue and Python setup and sample data -->
+<html lang="en-US">
+<head>
+<script src="https://unpkg.com/vue@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js">
+</script>
+<script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js">
+</script>
+
+</head>
+<body onload="brython(1)">
+<!-- HTML goes here -->
+<link rel="stylesheet" href="lib/style.css">
+<script scr="lib/script.js"></script>
+<div id="app">
+  <div v-if="LoggedIn">
+    <h1>Welcome Back</h1>
+    <h2>Course Available</h2>
+    <ul>
+      <li v-for="course in viewcourse" v-bind:class="courses">
+        <h3>{{course.ID}}/{{course.Code}} - {{course.Name}}</h3>
+        <p>Course overview: {{course.Overview}}</p>
+        <p>Lecture Times: {{course.LectureTimes}}</p>
+        <p>Workshop Times:</p>
+        <li v-for="workshops in viewworkshop" v-bind:class="courses['WorkshopTimes']">{{workshops}}
+        </li> 
+      </li>
+    </ul>
+    <form action="changecourse" @submit.prevent>
+      <input type="button" value="Add Course" @click="addcourse">
+      <input type="button" value="Delete Course" @click="deletecourse">
+      <input type="button" value="Modify course" @click="modifycourse"><br>
+      <input type="text" placeholder="enter course ID" v-model="course_id">
+    </form>
+  </div>
+  
+  <div v-else>
+  <form v-on:submit.prevent>
+    <span class="label login name">Login Name/ID</span>
+    <input type="text" placeholder="email or username" v-model="Login" @blur="validate">
+    <span v-if="loginerror">Login cannot be empty</span><br>
+    <span class="label password">Password</span>
+    <input type="password" placeholder="enter password" v-model="Password" @blur="validate">
+    <span v-if="passworderror">Password cannot be empty</span><br>
+    <button class="Login" v-on:click="UsersLogin">Login</button>
+    <div v-if="faillogin>0">{{faillogin}} Incorrect password. Please try again</div>
+  </form>  
+<!-- ... until here -->
+  </div>
+</div>
+
+<script type="text/python">
+from browser import window
+from browser import ajax
+import json
+import urllib.request
+
+# Add Python function definitions here 
+
+def validate(ev):
+  print ("validate called")
+  if app.text == user['LoginName'] and app.password == user['Password']:
+    app.loginerror = True
+    app.passworderror = True
+  else:
+    app.loginerror = False
+    app.passworderror = False
+
+def UsersLogin(ev):
+  ViewCourses(ev)
+  ViewWorkshop (ev) 
+  for user in app.users:
+    if app.Login == user['LoginName'] and app.Password == user['Password']:
+        app.LoggedIn = True
+        app.Login = ''
+        app.Password = ''
+    else: 
+      app.faillogin += 1
+      print ("Incorrect password. Please try again")
+
+def ViewCourses(ev):
+  app.viewcourse = []
+  for enrolment in app.enrolments:
+    if enrolment['StudentID'] == app.Login:
+      courses_ID = enrolment['CourseID']
+      for course in app.courses:
+        if course['ID'] == courses_ID:
+          app.viewcourse.append(course)
+  for user in app.users:
+    if user['LoginName'] == app.Login and user['UserType'] == "lecturer":
+      course_ID = user['ID']
+      for course in app.courses:
+        if course['LecturerID'] == course_ID:
+          app.viewcourse.append(course)
+
+def ViewWorkshop(ev):
+  app.viewworkshop = []
+  for enrolment in app.enrolments:
+    if enrolment['StudentID'] == app.Login:
+      courseID = enrolment['CourseID']
+      for course in app.courses:
+        if course['ID'] == courseID:
+          if enrolment['Workshop'] == '0' and course['ID'] == courseID:
+            app.viewworkshop.append(course['WorkshopTimes'][0])
+          elif enrolment['Workshop'] == '1' and course['ID'] == courseID:
+            app.viewworkshop.append(course['WorkshopTimes'][1])
+          else:
+            print ("No workshop selected")
+  for user in app.users:
+    if user['LoginName'] == app.Login and user['UserType'] == "lecturer":
+      coursesID = user['ID']
+      for course in app.courses:
+        if course['LecturerID'] == coursesID:
+          app.viewworkshop = course["WorkshopTimes"]
+          print("Workshop Times" + str(course['WorkshopTimes']))
+
+def addcourse(ev):
+  for course in app.courses:
+    if app.course_id == course['ID']:
+      app.courses.append(course)
+
+def deletecourse(ev):
+  for course in app.courses:
+    if app.courses_id == course['ID']:
+      app.courses.remove(course)
+      print("delete course" + str(course['Name']))
+
+def modifycourse(ev):
+  ViewCourses(ev)
+  for course in app.courses:
+    if app.course_id == course['ID']:
+      app.courses.append(course)
+      print("new course" + str(course['Name']))
+    else: 
+      app.courses.pop(course)
+      print("remove course" + str(course['Name']))
+
+app = window.Vue.new({
+  'el': '#app',
+  'data': {
+  # Variables go here
+  'courses' : [],
+  'users' : [],
+  'enrolments' : [],
+  'LoggedIn' : False,
+  'faillogin' : 0,
+  'Login' : '',
+  'Password' : '', 
+  'viewworkshop' : [],
+  'viewcourse' : [], 
+  'loginerror' : False,
+  'passworderror' : False,
+  'Newcoursename' : [],
+  'NewcourseID' : [],
+  'Newcoursecode' : [],
+  'Newcourseoverview' : [],
+  'Newyear' : [],
+  'Newtrimester' : [],
+  'Newlecturertimes' : [],
+  'Newworkshoptimes' : [],
+  'NewleturerID' : [],
+  'course_id': '',
+  },
+  'methods': {
+  # Python functions used by Vue go here
+  'UsersLogin' : UsersLogin,
+  'validate' : validate,
+  'addcourse' : addcourse,
+  'deletecourse' : deletecourse,
+  'modifycourse' :modifycourse,
+
+}
+})
+
+# Users - a list of dicts, each dict has an ID, a LoginName, a Password, and a UserType (either lecturer or student)
+
+app.users = [
+  {
+    "ID": "1",
+    "LoginName": "bloggsj", "Password": "1234", "UserType": "lecturer"
+  },
+  {
+    "ID": "2",
+    "LoginName": "chent", "Password": "7890", "UserType": "lecturer"
+  },
+  {
+    "ID": "3",
+    "LoginName": "myerss", "Password": "4567", "UserType": "lecturer"
+  },
+  {
+    "ID": "4",
+    "LoginName": "s123", "Password": "abcde", "UserType": "student"
+  },
+  {
+    "ID": "5",
+    "LoginName": "s124", "Password": "fghi", "UserType": "student"
+  }
+]
+
+# Courses - a list of dicts, each dict has: ID (an arbitrary unique ID), Code (e.g. INFO101), Name, Overview, Year, Trimester, LectureTimes, WorkshopTimes, and LecturerID
+
+app.courses = [
+  {
+    "ID":"1",
+    "Code": "INFO101",
+    "Name": "Introduction to Information Systems",
+    "Overview": "An examination of the role of information systems in the business operations, managerial decision-making and strategy of modern organisations. The course introduces the fundamental concepts of computer-based information systems acquisition and use", 
+    "Year": "2023",
+    "Trimester": "1",
+    "LectureTimes": ["Wed","12pm","1pm"],
+    "WorkshopTimes": [
+      ["Thu","2pm","4pm"],
+      ["Thu","4pm","6pm"]
+    ],
+    "LecturerID" : "1"
+  },
+  {
+    "ID":"2",
+    "Code": "INFO101",
+    "Name": "Introduction to Information Systems",
+    "Overview": "An examination of the role of information systems in the business operations, managerial decision-making and strategy of modern organisations. The course introduces the fundamental concepts of computer-based information systems acquisition and use", 
+    "Year": "2023",
+    "Trimester": "2",
+    "LectureTimes": ["Mon","12pm","1pm"],
+    "WorkshopTimes": [
+      ["Wed","2pm","4pm"],
+      ["Wed","4pm","6pm"]
+    ],
+    "LecturerID" : "3"
+  },
+  {
+    "ID":"3",
+    "Code": "INFO102",
+    "Name": "Foundations of Application Development",
+    "Overview": "An introduction to the foundations of application development in a business context. The course takes students through the process of translating business requirements into simple business applications using web technologies.", 
+    "Year": "2023",
+    "Trimester": "1",
+    "LectureTimes": ["Wed","2pm","3pm"],
+    "WorkshopTimes": [
+      ["Wed","4pm","6pm"],
+      ["Thu","10am","12pm"],
+      ["Thu","12pm","2pm"]
+    ],
+    "LecturerID" : "2"
+  },
+  {
+    "ID":"4",
+    "Code": "INFO103",
+    "Name": "Databases",
+    "Overview": "This course introduces the principles of database definition, design, access and implementation. It shows how databases support modern data processing systems. Students will be able to create a data model from a business situation, implement a database from that data model and use a query language such as SQL to access data.",
+    "Year" : "2023",
+    "Trimester" : "2",
+    "LectureTimes" : ["Wed", "2pm", "3pm"],
+    "WorkshopTimes": [ ["Mon", "10am", "12pm"], ["Tue", "10am", "12pm"]],
+    "LecturerID" : "3"
+  }
+]
+
+
+# enrolments: this records the links between students and courses. It is a list of dicts, where each dict has an ID (just an arbitrary unique number), the student's ID ('StudentID'), the course ('CourseID'), and the workshop selected ('Workshop') where "0" means the first workshop in the list, "1" means the second, and a "-1" means that no workshop has yet been selected
+
+app.enrolments = [
+  {'ID':'1', 'StudentID':'s123', 'CourseID':'1', 'Workshop':'0'},
+  {'ID':'2', 'StudentID':'s123', 'CourseID':'2', 'Workshop':'1'},
+  {'ID':'3', 'StudentID':'s124', 'CourseID':'1', 'Workshop':'0'},
+  {'ID':'4', 'StudentID':'s124', 'CourseID':'3', 'Workshop':'-1'},
+  {'ID':'4', 'StudentID':'s124', 'CourseID':'4', 'Workshop':'1'},
+]
+</script>
+
+</body>
+</html>
